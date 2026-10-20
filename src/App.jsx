@@ -7,19 +7,24 @@ import 'leaflet/dist/leaflet.css';
 // Fix for default Leaflet marker icon path issues in React bundlers
 delete L.Icon.Default.prototype._getIconUrl;
 
-// Function to create sleek, color-coded minimalist map pin icons with enlarged text
-const createSimplePinIcon = (color, labelText, isSelected) => {
-  const size = isSelected ? 46 : 36;
+// Function to create sleek, minimalist map pin icons cleanly anchored over lines
+const createSimplePinIcon = (color, labelText, isSelected, isDarkMode) => {
+  const size = isSelected ? 42 : 32;
+  const pinBorderColor = isDarkMode ? '#ffffff' : '#cbd5e1'; // White outline in Dark Mode, light grey in Light Mode
+  const badgeBg = isDarkMode ? 'rgba(30, 30, 30, 0.96)' : 'rgba(255, 255, 255, 0.96)';
+  const badgeText = isDarkMode ? '#cccccc' : '#1e1e1e';
+  const badgeBorder = isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(203, 213, 225, 0.8)';
+
   const svgHtml = `
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translate(-50%, -100%);">
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translate(-50%, -100%); pointer-events: auto;">
       <div style="
         background-color: ${color};
         width: ${size}px;
         height: ${size}px;
         border-radius: 50% 50% 50% 0;
         transform: rotate(-45deg);
-        border: 3px solid #ffffff;
-        box-shadow: 0 6px 14px rgba(0,0,0,0.6);
+        border: 3px solid ${pinBorderColor};
+        box-shadow: 0 6px 14px rgba(0,0,0,0.5);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -32,16 +37,16 @@ const createSimplePinIcon = (color, labelText, isSelected) => {
         "></div>
       </div>
       <span style="
-        margin-top: 6px;
-        background: rgba(15, 23, 42, 0.95);
-        color: #ffffff;
-        font-size: ${isSelected ? '14px' : '12px'};
+        margin-top: 4px;
+        background: ${badgeBg};
+        color: ${badgeText};
+        font-size: ${isSelected ? '13px' : '11px'};
         font-weight: 800;
-        padding: 4px 10px;
-        border-radius: 6px;
-        border: 1.5px solid rgba(255,255,255,0.3);
+        padding: 3px 8px;
+        border-radius: 5px;
+        border: 1px solid ${badgeBorder};
         white-space: nowrap;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         letter-spacing: 0.02em;
       ">${labelText}</span>
     </div>
@@ -50,7 +55,8 @@ const createSimplePinIcon = (color, labelText, isSelected) => {
     html: svgHtml,
     className: 'custom-minimal-pin',
     iconSize: [size, size],
-    iconAnchor: [size / 2, size]
+    iconAnchor: [size / 2, size],
+    popupAnchor: [0, -size]
   });
 };
 
@@ -78,11 +84,12 @@ const locations = {
   globalProtests: { coords: [48.8566, 2.3522], name: "Paris / London / Global Hubs" }
 };
 
-const movementData = [
+const rawMovementData = [
   {
     id: 'A',
     name: "Option A: Black Muslim Political Movements",
-    color: "#10b981", // Emerald
+    darkColor: "#34d399",  // Emerald
+    lightColor: "#059669", 
     from: locations.westAfrica,
     intermediate: locations.detroitChicago,
     to: locations.meccaCairoAccra,
@@ -102,7 +109,8 @@ const movementData = [
   {
     id: 'B',
     name: "Option B: Black Power Movement",
-    color: "#f59e0b", // Amber
+    darkColor: "#fbbf24",  // Amber
+    lightColor: "#d97706", 
     from: locations.lowndesAL,
     intermediate: locations.oaklandCA,
     to: locations.globalPowerNodes,
@@ -122,7 +130,8 @@ const movementData = [
   {
     id: 'C',
     name: "Option C: Black Non-Violence Movements",
-    color: "#3b82f6", // Blue
+    darkColor: "#60a5fa",  // Blue
+    lightColor: "#2563eb", 
     from: locations.india,
     intermediate: locations.montgomeryATL,
     to: locations.southAfricaNI,
@@ -142,7 +151,8 @@ const movementData = [
   {
     id: 'D',
     name: "Option D: Black Feminist Movements",
-    color: "#ec4899", // Pink
+    darkColor: "#f472b6",  // Pink
+    lightColor: "#db2777", 
     from: locations.abolitionistRoots,
     intermediate: locations.bostonCRC,
     to: locations.globalFeminism,
@@ -162,7 +172,8 @@ const movementData = [
   {
     id: 'E',
     name: "Option E: Black Lives Matter (BLM & M4BL)",
-    color: "#8b5cf6", // Purple
+    darkColor: "#c084fc",  // Purple
+    lightColor: "#7c3aed", 
     from: locations.fergusonFL,
     intermediate: locations.usTransnationalNet,
     to: locations.globalProtests,
@@ -197,20 +208,36 @@ function AnimatedTrajectoryArrows({ startCoords, endCoords, color, isSelected })
       positions={[startCoords, endCoords]}
       pathOptions={{
         color: color,
-        weight: isSelected ? 6 : 3.5,
-        dashArray: '14, 14',
+        weight: isSelected ? 5 : 3,
+        dashArray: '12, 12',
         dashOffset: `-${offset}`,
-        opacity: isSelected ? 1 : 0.75
+        opacity: isSelected ? 0.95 : 0.65,
+        zIndexOffset: 100
       }}
     />
   );
 }
 
 export default function App() {
-  const [activeMovement, setActiveMovement] = useState(movementData[0]);
-  const [visibleMovements, setVisibleMovements] = useState({ A: true, B: true, C: true, D: true, E: true });
   const [mapTheme, setMapTheme] = useState('dark');
+  const [visibleMovements, setVisibleMovements] = useState({ A: true, B: true, C: true, D: true, E: true });
   const [hudHeight, setHudHeight] = useState('medium'); // 'compact', 'medium', 'full'
+
+  const isDarkMode = mapTheme === 'dark';
+
+  // Map movements with dynamic color based on active theme
+  const movementData = rawMovementData.map(mov => ({
+    ...mov,
+    color: isDarkMode ? mov.darkColor : mov.lightColor
+  }));
+
+  const [activeMovement, setActiveMovement] = useState(movementData[0]);
+
+  // Sync active movement color when mapTheme changes
+  useEffect(() => {
+    const current = movementData.find(m => m.id === activeMovement.id);
+    if (current) setActiveMovement(current);
+  }, [mapTheme]);
 
   // Free public tile URLs requiring no API keys
   const tileUrls = {
@@ -228,16 +255,32 @@ export default function App() {
     full: 'h-[92vh]'
   };
 
+  // Theme-aware tailwind utility classes for VS Code Smoky Dark Grey aesthetic
+  const themeClasses = {
+    bgApp: isDarkMode ? 'bg-[#181818] text-[#cccccc]' : 'bg-[#f8fafc] text-[#0f172a]',
+    headerBg: isDarkMode ? 'bg-[#1e1e1e]/95 border-[#3c3c3c] text-[#cccccc]' : 'bg-white/95 border-[#e2e8f0] text-[#0f172a] shadow-xl',
+    headerTitle: isDarkMode ? 'text-[#34d399]' : 'text-emerald-700',
+    hudBg: isDarkMode ? 'bg-[#1e1e1e]/95 border-[#3c3c3c] text-[#cccccc]' : 'bg-white/95 border-[#e2e8f0] text-[#0f172a] shadow-2xl',
+    hudHandleBg: isDarkMode ? 'bg-[#181818]/90 hover:bg-[#2d2d2d]/90 border-[#3c3c3c]' : 'bg-[#f1f5f9] hover:bg-[#e2e8f0] border-[#cbd5e1]',
+    hudTitle: isDarkMode ? 'text-[#ffffff]' : 'text-[#0f172a]',
+    cardBg: isDarkMode ? 'bg-[#252526] border-[#3c3c3c]' : 'bg-[#f8fafc] border-[#cbd5e1] shadow-sm',
+    sidebarBg: isDarkMode ? 'bg-[#252526] border-[#3c3c3c]' : 'bg-[#f8fafc] border-[#cbd5e1] shadow-sm',
+    btnInactive: isDarkMode ? 'bg-[#2d2d2d] border-[#3c3c3c] text-[#cccccc] hover:bg-[#383838]' : 'bg-white border-[#cbd5e1] text-[#334155] hover:bg-[#f1f5f9] shadow-sm',
+    btnActive: isDarkMode ? 'bg-[#007acc] border-[#007acc] text-white ring-2 ring-[#007acc]/40' : 'bg-[#0f172a] border-emerald-600 text-white ring-2 ring-emerald-600/30',
+    textMuted: isDarkMode ? 'text-[#9d9d9d]' : 'text-[#64748b]',
+    textMain: isDarkMode ? 'text-[#cccccc]' : 'text-[#0f172a]'
+  };
+
   return (
-    <div className="w-screen h-screen flex flex-col bg-slate-950 font-sans text-white overflow-hidden relative">
+    <div className={`w-screen h-screen flex flex-col font-sans overflow-hidden relative transition-colors duration-300 ${themeClasses.bgApp}`}>
       
       {/* Top Banner Navigation */}
-      <header className="absolute top-3 left-3 right-3 z-[1000] bg-slate-900/95 border border-slate-700 p-4 rounded-xl backdrop-blur-md flex flex-wrap justify-between items-center shadow-2xl">
+      <header className={`absolute top-3 left-3 right-3 z-[1000] p-4 rounded-xl backdrop-blur-md flex flex-wrap justify-between items-center transition-colors duration-300 border ${themeClasses.headerBg}`}>
         <div className="flex items-center space-x-3.5">
-          <Compass className="w-8 h-8 text-emerald-400 animate-pulse flex-shrink-0" />
+          <Compass className={`w-8 h-8 animate-pulse flex-shrink-0 ${isDarkMode ? 'text-[#34d399]' : 'text-emerald-600'}`} />
           <div>
-            <h1 className="text-lg sm:text-xl font-black text-emerald-400 tracking-wide">Black Studies Movement Map</h1>
-            <p className="text-sm sm:text-base text-slate-200">Guiding Question: <span className="text-amber-300 italic font-bold">What happens to a political idea when it travels?</span></p>
+            <h1 className={`text-lg sm:text-xl font-black tracking-wide ${themeClasses.headerTitle}`}>Black Studies Movement Map</h1>
+            <p className={`text-sm sm:text-base ${themeClasses.textMuted}`}>Guiding Question: <span className="text-amber-400 italic font-bold">What happens to a political idea when it travels?</span></p>
           </div>
         </div>
 
@@ -245,10 +288,14 @@ export default function App() {
         <div className="flex items-center space-x-3 mt-2 sm:mt-0">
           <button
             onClick={() => setMapTheme(mapTheme === 'dark' ? 'light' : 'dark')}
-            className="px-4 py-2.5 rounded-lg text-sm font-extrabold bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center gap-2 transition-colors text-amber-300 shadow-md"
+            className={`px-4 py-2.5 rounded-lg text-sm font-extrabold flex items-center gap-2 transition-colors shadow-md border ${
+              isDarkMode 
+                ? 'bg-[#2d2d2d] hover:bg-[#383838] border-[#3c3c3c] text-amber-300' 
+                : 'bg-[#1e293b] hover:bg-[#0f172a] border-[#334155] text-amber-300'
+            }`}
           >
-            {mapTheme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-400" />}
-            {mapTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-300" />}
+            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
           </button>
 
           {movementData.map((mov) => (
@@ -256,9 +303,7 @@ export default function App() {
               key={mov.id}
               onClick={() => setActiveMovement(mov)}
               className={`px-4 py-2.5 rounded-lg text-sm font-black transition-all flex items-center gap-2 border ${
-                activeMovement.id === mov.id
-                  ? 'bg-slate-800 border-emerald-500 text-white shadow-lg ring-2 ring-emerald-500'
-                  : 'bg-slate-950/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+                activeMovement.id === mov.id ? themeClasses.btnActive : themeClasses.btnInactive
               }`}
             >
               <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: mov.color }}></span>
@@ -274,7 +319,7 @@ export default function App() {
           <TileLayer 
             key={mapTheme}
             url={tileUrls[mapTheme]} 
-            attribution={mapTheme === 'dark' ? '&copy; Esri' : '&copy; OpenStreetMap contributors'} 
+            attribution={isDarkMode ? '&copy; Esri' : '&copy; OpenStreetMap contributors'} 
           />
 
           {/* Render Trajectories & Minimalist Pins */}
@@ -303,7 +348,8 @@ export default function App() {
                 {/* Origin Pin */}
                 <Marker
                   position={mov.from.coords}
-                  icon={createSimplePinIcon(mov.color, mov.from.name, isSelected)}
+                  zIndexOffset={isSelected ? 1000 : 500}
+                  icon={createSimplePinIcon(mov.color, mov.from.name, isSelected, isDarkMode)}
                   eventHandlers={{ click: () => setActiveMovement(mov) }}
                 >
                   <Popup className="custom-leaflet-popup">
@@ -318,7 +364,8 @@ export default function App() {
                 {/* Intermediate Pin */}
                 <Marker
                   position={mov.intermediate.coords}
-                  icon={createSimplePinIcon(mov.color, mov.intermediate.name, isSelected)}
+                  zIndexOffset={isSelected ? 1000 : 500}
+                  icon={createSimplePinIcon(mov.color, mov.intermediate.name, isSelected, isDarkMode)}
                   eventHandlers={{ click: () => setActiveMovement(mov) }}
                 >
                   <Popup className="custom-leaflet-popup">
@@ -333,7 +380,8 @@ export default function App() {
                 {/* Destination Pin */}
                 <Marker
                   position={mov.to.coords}
-                  icon={createSimplePinIcon(mov.color, mov.to.name, isSelected)}
+                  zIndexOffset={isSelected ? 1000 : 500}
+                  icon={createSimplePinIcon(mov.color, mov.to.name, isSelected, isDarkMode)}
                   eventHandlers={{ click: () => setActiveMovement(mov) }}
                 >
                   <Popup className="custom-leaflet-popup">
@@ -351,36 +399,36 @@ export default function App() {
       </div>
 
       {/* Resizable HUD Dashboard Card at Bottom */}
-      <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] w-[96%] max-w-7xl bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col transition-all duration-300 ease-in-out ${hudHeightClasses[hudHeight]}`}>
+      <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] w-[96%] max-w-7xl border rounded-2xl shadow-2xl backdrop-blur-md flex flex-col transition-all duration-300 ease-in-out ${themeClasses.hudBg} ${hudHeightClasses[hudHeight]}`}>
         
         {/* HUD Top Pull/Drag Handle */}
-        <div className="w-full bg-slate-950/90 hover:bg-slate-800/90 border-b border-slate-700 py-3.5 px-6 rounded-t-2xl flex items-center justify-between cursor-pointer select-none transition-colors"
+        <div className={`w-full py-3.5 px-6 rounded-t-2xl flex items-center justify-between cursor-pointer select-none transition-colors border-b ${themeClasses.hudHandleBg}`}
              onClick={() => setHudHeight(hudHeight === 'compact' ? 'medium' : hudHeight === 'medium' ? 'full' : 'compact')}>
           <div className="flex items-center space-x-3.5">
             <span className="w-4 h-4 rounded-full" style={{ backgroundColor: activeMovement.color }}></span>
-            <span className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-100">{activeMovement.name}</span>
+            <span className={`text-base sm:text-lg font-black uppercase tracking-wider ${themeClasses.hudTitle}`}>{activeMovement.name}</span>
           </div>
           
-          <div className="flex items-center space-x-2 bg-slate-800 px-4 py-1.5 rounded-full border border-slate-600 shadow-sm">
-            <ChevronUp className="w-5 h-5 text-emerald-400" />
-            <span className="text-xs sm:text-sm font-extrabold text-slate-200 uppercase tracking-wider">
+          <div className={`flex items-center space-x-2 px-4 py-1.5 rounded-full border shadow-sm ${isDarkMode ? 'bg-[#252526] border-[#3c3c3c]' : 'bg-white border-[#cbd5e1]'}`}>
+            <ChevronUp className={`w-5 h-5 ${isDarkMode ? 'text-[#34d399]' : 'text-emerald-600'}`} />
+            <span className={`text-xs sm:text-sm font-extrabold uppercase tracking-wider ${themeClasses.textMain}`}>
               {hudHeight === 'compact' ? 'Pull Up for Details' : hudHeight === 'medium' ? 'Expand Full View' : 'Collapse HUD'}
             </span>
-            <ChevronDown className="w-5 h-5 text-emerald-400" />
+            <ChevronDown className={`w-5 h-5 ${isDarkMode ? 'text-[#34d399]' : 'text-emerald-600'}`} />
           </div>
 
           <div className="flex items-center space-x-2">
             <button 
               onClick={(e) => { e.stopPropagation(); setHudHeight('compact'); }}
-              className={`px-3 py-1 rounded text-xs sm:text-sm font-black ${hudHeight === 'compact' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}
+              className={`px-3 py-1 rounded text-xs sm:text-sm font-black ${hudHeight === 'compact' ? 'bg-[#007acc] text-white' : themeClasses.btnInactive}`}
             >Min</button>
             <button 
               onClick={(e) => { e.stopPropagation(); setHudHeight('medium'); }}
-              className={`px-3 py-1 rounded text-xs sm:text-sm font-black ${hudHeight === 'medium' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}
+              className={`px-3 py-1 rounded text-xs sm:text-sm font-black ${hudHeight === 'medium' ? 'bg-[#007acc] text-white' : themeClasses.btnInactive}`}
             >Mid</button>
             <button 
               onClick={(e) => { e.stopPropagation(); setHudHeight('full'); }}
-              className={`px-3 py-1 rounded text-xs sm:text-sm font-black ${hudHeight === 'full' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}
+              className={`px-3 py-1 rounded text-xs sm:text-sm font-black ${hudHeight === 'full' ? 'bg-[#007acc] text-white' : themeClasses.btnInactive}`}
             >Max</button>
           </div>
         </div>
@@ -389,12 +437,12 @@ export default function App() {
         <div className="flex-1 p-6 sm:p-7 overflow-y-auto flex flex-col md:flex-row gap-6 sm:gap-8">
           
           {/* Layer Controls Panel (Left Side) */}
-          <div className="w-full md:w-80 bg-slate-950/90 border border-slate-800 p-5 rounded-xl flex flex-col justify-between flex-shrink-0">
+          <div className={`w-full md:w-80 border p-5 rounded-xl flex flex-col justify-between flex-shrink-0 ${themeClasses.sidebarBg}`}>
             <div>
-              <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-emerald-400 mb-3 flex items-center gap-2.5">
-                <Layers className="w-5 h-5 text-emerald-400" /> Trajectory Layers:
+              <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider mb-3 flex items-center gap-2.5 ${isDarkMode ? 'text-[#34d399]' : 'text-emerald-700'}`}>
+                <Layers className={`w-5 h-5 ${isDarkMode ? 'text-[#34d399]' : 'text-emerald-600'}`} /> Trajectory Layers:
               </h3>
-              <p className="text-xs sm:text-sm text-slate-300 mb-4 font-semibold">Toggle movement lines on/off:</p>
+              <p className={`text-xs sm:text-sm mb-4 font-semibold ${themeClasses.textMuted}`}>Toggle movement lines on/off:</p>
               <div className="space-y-2.5">
                 {movementData.map((m) => {
                   const isVisible = visibleMovements[m.id];
@@ -404,21 +452,21 @@ export default function App() {
                       onClick={() => toggleVisibility(m.id)}
                       className={`w-full px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-extrabold flex items-center justify-between transition-all border ${
                         isVisible
-                          ? 'bg-slate-900 border-emerald-500 text-white shadow-sm'
-                          : 'bg-slate-950/50 border-slate-800 text-slate-500'
+                          ? isDarkMode ? 'bg-[#2d2d2d] border-[#007acc] text-white shadow-sm' : 'bg-white border-emerald-600 text-slate-900 shadow-md'
+                          : isDarkMode ? 'bg-[#181818]/60 border-[#3c3c3c] text-[#717171]' : 'bg-slate-200/60 border-[#cbd5e1] text-slate-400'
                       }`}
                     >
                       <div className="flex items-center space-x-3 truncate pr-1">
                         <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }}></span>
                         <span className="truncate">{m.id}: {m.name.split(':')[1] || m.name}</span>
                       </div>
-                      {isVisible ? <Eye className="w-4 h-4 text-emerald-400 flex-shrink-0" /> : <EyeOff className="w-4 h-4 text-slate-600 flex-shrink-0" />}
+                      {isVisible ? <Eye className={`w-4 h-4 flex-shrink-0 ${isDarkMode ? 'text-[#34d399]' : 'text-emerald-600'}`} /> : <EyeOff className="w-4 h-4 text-slate-400 flex-shrink-0" />}
                     </button>
                   );
                 })}
               </div>
             </div>
-            <div className="mt-5 pt-3 border-t border-slate-800 text-xs sm:text-sm text-slate-400 font-bold text-center">
+            <div className={`mt-5 pt-3 border-t text-xs sm:text-sm font-bold text-center ${isDarkMode ? 'border-[#3c3c3c] text-[#9d9d9d]' : 'border-[#e2e8f0] text-slate-500'}`}>
               Click map pins to inspect cargo details
             </div>
           </div>
@@ -430,31 +478,31 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Historical Mechanics */}
-              <div className="bg-slate-950/80 p-5 sm:p-6 rounded-xl border border-slate-800 space-y-3.5">
-                <h3 className="font-black text-emerald-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider">
-                  <Sparkles className="w-5 h-5 text-emerald-400" /> Historical Traversal & Mechanics
+              <div className={`p-5 sm:p-6 rounded-xl border space-y-3.5 ${themeClasses.cardBg}`}>
+                <h3 className={`font-black flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider ${isDarkMode ? 'text-[#34d399]' : 'text-emerald-700'}`}>
+                  <Sparkles className="w-5 h-5" /> Historical Traversal & Mechanics
                 </h3>
-                <p className="text-base sm:text-lg text-slate-100 leading-relaxed">
-                  <strong className="text-emerald-300 font-bold">How It Traversed:</strong> {activeMovement.howItTraversed}
+                <p className={`text-base sm:text-lg leading-relaxed ${themeClasses.textMain}`}>
+                  <strong className={isDarkMode ? 'text-[#a7f3d0] font-bold' : 'text-emerald-800 font-bold'}>How It Traversed:</strong> {activeMovement.howItTraversed}
                 </p>
-                <p className="text-base sm:text-lg text-slate-100 leading-relaxed pt-1">
-                  <strong className="text-emerald-300 font-bold">Why It Arrived:</strong> {activeMovement.whyItArrived}
+                <p className={`text-base sm:text-lg leading-relaxed pt-1 ${themeClasses.textMain}`}>
+                  <strong className={isDarkMode ? 'text-[#a7f3d0] font-bold' : 'text-emerald-800 font-bold'}>Why It Arrived:</strong> {activeMovement.whyItArrived}
                 </p>
               </div>
 
               {/* Traveling Cargo */}
-              <div className="bg-slate-950/80 p-5 sm:p-6 rounded-xl border border-slate-800 space-y-3.5">
-                <h3 className="font-black text-amber-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider">
-                  <Anchor className="w-5 h-5 text-amber-400" /> Traveling Cargo
+              <div className={`p-5 sm:p-6 rounded-xl border space-y-3.5 ${themeClasses.cardBg}`}>
+                <h3 className={`font-black flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider ${isDarkMode ? 'text-[#fbbf24]' : 'text-amber-700'}`}>
+                  <Anchor className="w-5 h-5" /> Traveling Cargo
                 </h3>
-                <p className="text-base sm:text-lg text-slate-100 leading-relaxed">
-                  <strong className="text-amber-300 font-bold">Tactics & Strategy:</strong> {activeMovement.cargo.strategy}
+                <p className={`text-base sm:text-lg leading-relaxed ${themeClasses.textMain}`}>
+                  <strong className={isDarkMode ? 'text-[#fef08a] font-bold' : 'text-amber-800 font-bold'}>Tactics & Strategy:</strong> {activeMovement.cargo.strategy}
                 </p>
-                <p className="text-base sm:text-lg text-slate-100 leading-relaxed">
-                  <strong className="text-amber-300 font-bold">Culture & Aesthetics:</strong> {activeMovement.cargo.culture}
+                <p className={`text-base sm:text-lg leading-relaxed ${themeClasses.textMain}`}>
+                  <strong className={isDarkMode ? 'text-[#fef08a] font-bold' : 'text-amber-800 font-bold'}>Culture & Aesthetics:</strong> {activeMovement.cargo.culture}
                 </p>
-                <p className="text-base sm:text-lg text-slate-100 leading-relaxed">
-                  <strong className="text-amber-300 font-bold">Spirituality:</strong> {activeMovement.cargo.spirituality}
+                <p className={`text-base sm:text-lg leading-relaxed ${themeClasses.textMain}`}>
+                  <strong className={isDarkMode ? 'text-[#fef08a] font-bold' : 'text-amber-800 font-bold'}>Spirituality:</strong> {activeMovement.cargo.spirituality}
                 </p>
               </div>
 
@@ -464,32 +512,32 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Primary Source Quote Box */}
-              <div className="bg-slate-950/80 p-5 sm:p-6 rounded-xl border border-slate-800 space-y-3.5">
-                <h3 className="font-black text-sky-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider">
-                  <Quote className="w-5 h-5 text-sky-400" /> Primary Source Voice
+              <div className={`p-5 sm:p-6 rounded-xl border space-y-3.5 ${themeClasses.cardBg}`}>
+                <h3 className={`font-black flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider ${isDarkMode ? 'text-[#38bdf8]' : 'text-sky-700'}`}>
+                  <Quote className="w-5 h-5" /> Primary Source Voice
                 </h3>
-                <p className="text-base sm:text-lg text-slate-100 italic leading-relaxed border-l-4 border-sky-500 pl-4 py-2 bg-slate-900/60 rounded-r-lg font-medium">
+                <p className={`text-base sm:text-lg italic leading-relaxed border-l-4 border-[#38bdf8] pl-4 py-2 rounded-r-lg font-medium ${isDarkMode ? 'bg-[#181818]/90 text-[#f1f5f9]' : 'bg-sky-50 text-slate-800'}`}>
                   {activeMovement.primaryQuote}
                 </p>
               </div>
 
               {/* Spatial Trajectory Node Timeline */}
-              <div className="bg-slate-950/80 p-5 sm:p-6 rounded-xl border border-slate-800 space-y-3.5">
-                <h3 className="font-black text-indigo-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider">
-                  <Navigation className="w-5 h-5 text-indigo-400" /> Geographic Node Timeline
+              <div className={`p-5 sm:p-6 rounded-xl border space-y-3.5 ${themeClasses.cardBg}`}>
+                <h3 className={`font-black flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider ${isDarkMode ? 'text-[#818cf8]' : 'text-indigo-700'}`}>
+                  <Navigation className="w-5 h-5" /> Geographic Node Timeline
                 </h3>
                 <div className="grid grid-cols-3 gap-3 text-xs sm:text-sm pt-1">
-                  <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 shadow-inner">
-                    <span className="text-emerald-400 font-extrabold block mb-1 text-sm">1. Genesis:</span>
-                    <span className="text-slate-100 font-bold text-sm sm:text-base">{activeMovement.from.name}</span>
+                  <div className={`p-3 rounded-lg border shadow-inner ${isDarkMode ? 'bg-[#181818] border-[#3c3c3c]' : 'bg-white border-[#cbd5e1]'}`}>
+                    <span className={`font-extrabold block mb-1 text-sm ${isDarkMode ? 'text-[#34d399]' : 'text-emerald-700'}`}>1. Genesis:</span>
+                    <span className={`font-bold text-sm sm:text-base ${themeClasses.textMain}`}>{activeMovement.from.name}</span>
                   </div>
-                  <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 shadow-inner">
-                    <span className="text-amber-400 font-extrabold block mb-1 text-sm">2. Vector:</span>
-                    <span className="text-slate-100 font-bold text-sm sm:text-base">{activeMovement.intermediate.name}</span>
+                  <div className={`p-3 rounded-lg border shadow-inner ${isDarkMode ? 'bg-[#181818] border-[#3c3c3c]' : 'bg-white border-[#cbd5e1]'}`}>
+                    <span className={`font-extrabold block mb-1 text-sm ${isDarkMode ? 'text-[#fbbf24]' : 'text-amber-700'}`}>2. Vector:</span>
+                    <span className={`font-bold text-sm sm:text-base ${themeClasses.textMain}`}>{activeMovement.intermediate.name}</span>
                   </div>
-                  <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 shadow-inner">
-                    <span className="text-sky-400 font-extrabold block mb-1 text-sm">3. Horizon:</span>
-                    <span className="text-slate-100 font-bold text-sm sm:text-base">{activeMovement.to.name}</span>
+                  <div className={`p-3 rounded-lg border shadow-inner ${isDarkMode ? 'bg-[#181818] border-[#3c3c3c]' : 'bg-white border-[#cbd5e1]'}`}>
+                    <span className={`font-extrabold block mb-1 text-sm ${isDarkMode ? 'text-[#38bdf8]' : 'text-sky-700'}`}>3. Horizon:</span>
+                    <span className={`font-bold text-sm sm:text-base ${themeClasses.textMain}`}>{activeMovement.to.name}</span>
                   </div>
                 </div>
               </div>
@@ -498,22 +546,22 @@ export default function App() {
 
             {/* EXPANDED CONTENT (VISIBLE IN FULL HUD): Core Analytical Synthesis */}
             {hudHeight === 'full' && (
-              <div className="bg-slate-950/90 p-5 sm:p-6 rounded-xl border border-emerald-800/60 space-y-3 shadow-lg">
-                <h3 className="font-black text-emerald-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider">
-                  <Compass className="w-5 h-5 text-emerald-400" /> Theoretical Synthesis & Guiding Analysis
+              <div className={`p-5 sm:p-6 rounded-xl border space-y-3 shadow-lg ${isDarkMode ? 'bg-[#1e1e1e]/95 border-[#007acc]/60' : 'bg-emerald-50/80 border-emerald-300'}`}>
+                <h3 className={`font-black flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider ${isDarkMode ? 'text-[#34d399]' : 'text-emerald-800'}`}>
+                  <Compass className="w-5 h-5" /> Theoretical Synthesis & Guiding Analysis
                 </h3>
-                <p className="text-base sm:text-lg text-slate-100 leading-relaxed italic font-medium">
+                <p className={`text-base sm:text-lg leading-relaxed italic font-medium ${themeClasses.textMain}`}>
                   "{activeMovement.theoreticalSynthesis}"
                 </p>
               </div>
             )}
 
             {/* Course Citation Box */}
-            <div className="bg-slate-950/80 p-5 rounded-xl border border-slate-800">
-              <h3 className="font-black text-purple-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider mb-2">
-                <BookOpen className="w-5 h-5 text-purple-400" /> Course Reading Integration
+            <div className={`p-5 rounded-xl border ${themeClasses.cardBg}`}>
+              <h3 className={`font-black flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider mb-2 ${isDarkMode ? 'text-[#c084fc]' : 'text-purple-700'}`}>
+                <BookOpen className="w-5 h-5" /> Course Reading Integration
               </h3>
-              <p className="text-base sm:text-lg text-slate-200 italic leading-relaxed font-medium">
+              <p className={`text-base sm:text-lg italic leading-relaxed font-medium ${themeClasses.textMuted}`}>
                 "{activeMovement.citation}"
               </p>
             </div>
