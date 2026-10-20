@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import { Compass, BookOpen, Anchor, MapPin, Eye, EyeOff, Sun, Moon, Sparkles, ChevronUp, ChevronDown, Maximize2 } from 'lucide-react';
+import { Compass, BookOpen, Anchor, MapPin, Eye, EyeOff, Sun, Moon, Sparkles, ChevronUp, ChevronDown, Quote, Navigation, Layers } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default Leaflet marker icon path issues in React bundlers
 delete L.Icon.Default.prototype._getIconUrl;
 
-// Function to create sleek, color-coded minimalist map pin icons
+// Function to create sleek, color-coded minimalist map pin icons with enlarged text
 const createSimplePinIcon = (color, labelText, isSelected) => {
-  const size = isSelected ? 34 : 26;
+  const size = isSelected ? 46 : 36;
   const svgHtml = `
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translate(-50%, -100%);">
       <div style="
@@ -18,8 +18,8 @@ const createSimplePinIcon = (color, labelText, isSelected) => {
         height: ${size}px;
         border-radius: 50% 50% 50% 0;
         transform: rotate(-45deg);
-        border: 2px solid #ffffff;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        border: 3px solid #ffffff;
+        box-shadow: 0 6px 14px rgba(0,0,0,0.6);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -32,16 +32,17 @@ const createSimplePinIcon = (color, labelText, isSelected) => {
         "></div>
       </div>
       <span style="
-        margin-top: 4px;
-        background: rgba(15, 23, 42, 0.9);
-        color: #f8fafc;
-        font-size: ${isSelected ? '11px' : '9px'};
-        font-weight: 700;
-        padding: 2px 6px;
-        border-radius: 4px;
-        border: 1px solid rgba(255,255,255,0.2);
+        margin-top: 6px;
+        background: rgba(15, 23, 42, 0.95);
+        color: #ffffff;
+        font-size: ${isSelected ? '14px' : '12px'};
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1.5px solid rgba(255,255,255,0.3);
         white-space: nowrap;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        letter-spacing: 0.02em;
       ">${labelText}</span>
     </div>
   `;
@@ -58,23 +59,23 @@ const locations = {
   westAfrica: { coords: [12.0, -2.5], name: "West Africa" },
   detroitChicago: { coords: [41.8781, -87.6298], name: "Detroit / Chicago" },
   harlemNY: { coords: [40.8116, -73.9442], name: "Harlem, NY" },
-  meccaCairoAccra: { coords: [21.4225, 39.8262], name: "Mecca" },
+  meccaCairoAccra: { coords: [21.4225, 39.8262], name: "Mecca / Cairo / Accra" },
   
   lowndesAL: { coords: [32.3182, -86.6496], name: "Lowndes Co., AL" },
-  oaklandCA: { coords: [37.8044, -122.2712], name: "Oakland" },
-  globalPowerNodes: { coords: [51.5074, -0.1278], name: "London" },
+  oaklandCA: { coords: [37.8044, -122.2712], name: "Oakland, CA" },
+  globalPowerNodes: { coords: [51.5074, -0.1278], name: "London / Global Nodes" },
   
-  india: { coords: [20.5937, 78.9629], name: "India" },
-  montgomeryATL: { coords: [33.7490, -84.3880], name: "Atlanta / Montgomery" },
-  southAfricaNI: { coords: [-33.9249, 18.4241], name: "South Africa" },
+  india: { coords: [20.5937, 78.9629], name: "India (Satyagraha)" },
+  montgomeryATL: { coords: [33.7490, -84.3880], name: "Montgomery / Atlanta" },
+  southAfricaNI: { coords: [-33.9249, 18.4241], name: "South Africa / Global Axis" },
   
-  abolitionistRoots: { coords: [18.9712, -72.2852], name: "Haiti" },
+  abolitionistRoots: { coords: [18.9712, -72.2852], name: "Haiti / Abolitionist Roots" },
   bostonCRC: { coords: [42.3601, -71.0589], name: "Boston (CRC)" },
-  globalFeminism: { coords: [10.4806, -66.9036], name: "Afro-Latin America" },
+  globalFeminism: { coords: [10.4806, -66.9036], name: "Afro-Latin America & Diaspora" },
   
-  fergusonFL: { coords: [38.7444, -90.3013], name: "Ferguson, MO" },
-  usTransnationalNet: { coords: [34.0522, -118.2437], name: "US Network" },
-  globalProtests: { coords: [48.8566, 2.3522], name: "Paris / London" }
+  fergusonFL: { coords: [38.7444, -90.3013], name: "Ferguson, MO & Sanford, FL" },
+  usTransnationalNet: { coords: [34.0522, -118.2437], name: "US Transnational Network" },
+  globalProtests: { coords: [48.8566, 2.3522], name: "Paris / London / Global Hubs" }
 };
 
 const movementData = [
@@ -85,11 +86,13 @@ const movementData = [
     from: locations.westAfrica,
     intermediate: locations.detroitChicago,
     to: locations.meccaCairoAccra,
-    trajectory: "West Africa / Enslaved Muslim Networks → Nation of Islam (Detroit/Chicago) → Malcolm X / OAAU (Harlem) → Global Pan-African & Islamic Solidarity (Mecca, Cairo, Accra).",
-    howItTraversed: "Traversed via transatlantic slave routes through preserved memory, then codified during the Great Migration through urban mosque networks and print media ('Muhammad Speaks'). Malcolm X's international travels across West Africa and the Middle East catalyzed its expansion into global anti-colonial Pan-Africanism.",
+    trajectory: "West Africa / Enslaved Muslim Networks → Nation of Islam (Detroit/Chicago) → Malcolm X / Organization of Afro-American Unity (Harlem) → Global Pan-African & Islamic Solidarity (Mecca, Cairo, Accra).",
+    howItTraversed: "Traversed via transatlantic slave routes through preserved memory, Arabic literacy, and covert prayer circles. Codified during the Great Migration through urban mosque networks and mass print media ('Muhammad Speaks'). Malcolm X's international travels across West Africa and the Middle East catalyzed its expansion into global anti-colonial Pan-Africanism.",
     whyItArrived: "Urban northern enclaves provided fertile ground for disciplined, self-determining institutions amidst racial segregation, while international anti-colonial revolutions offered a global geopolitical framework beyond US civil rights reformism.",
+    primaryQuote: "“You can't understand what is happening in Mississippi if you don't understand what is happening in the Congo. We are living in a country that is a colonial power in itself.” — Malcolm X (1964)",
+    theoreticalSynthesis: "When Black Muslim thought traveled globally, it mutated from a domestic critique of Jim Crow into a transnational anti-imperialist movement that linked domestic racial capitalism to global anti-colonial struggles in the Third World.",
     cargo: {
-      strategy: "Anti-colonial critique, independent economic self-reliance (farms, bakeries), and disciplined self-defense principles.",
+      strategy: "Anti-colonial critique, independent economic self-reliance (farms, bakeries, print shops), and disciplined self-defense principles.",
       culture: "Suits, bowties, modest dress standards, and mass print media distribution ('Muhammad Speaks' newspaper).",
       spirituality: "Islamic liberation theology, strict adherence to prayer, Ramadan observance, and Elijah Muhammad dietary guidelines.",
       vision: "Sovereign Black nation-building, cultural self-determination, and transnational Pan-African/Islamic solidarity."
@@ -106,8 +109,10 @@ const movementData = [
     trajectory: "Lowndes County, Alabama (LCFO / Original Black Panther Party) → Oakland, California (Black Panther Party for Self-Defense) → Global Black Power Nodes (Bermuda, London, Australia, Trinidad 1970 Revolution).",
     howItTraversed: "Organizing strategies moved north and west via SNCC field secretaries (Stokely Carmichael/Kwame Ture). Huey P. Newton and Bobby Seale adopted the Lowndes County Freedom Organization's black panther emblem, scaling it into an urban revolutionary party with global solidarity chapters.",
     whyItArrived: "Frustration with slow southern desegregation and pervasive northern police brutality created a demand for militant armed self-defense, community-led survival programs, and anti-imperialist solidarity with global third-world liberation fronts.",
+    primaryQuote: "“It is a call for Black people in this country to unite, to recognize their heritage, to build a sense of community. It is a call for Black people to define their own goals, to lead their own organizations.” — Stokely Carmichael (Kwame Ture), 1966",
+    theoreticalSynthesis: "Black Power's spatial traversal demonstrates how grassroots rural electoral symbols can transform into global urban revolutionary iconography, re-framing Black identity from civil rights petitioning to sovereign anti-colonial struggle.",
     cargo: {
-      strategy: "Ten-Point Program, Free Breakfast for Children, liberation schools, armed community patrols, and copwatch.",
+      strategy: "Ten-Point Program, Free Breakfast for Children, liberation schools, armed community patrols, and copwatch programs.",
       culture: "Black Panther emblem, black berets, leather jackets, 'The Black Panther' newspaper, and 'Black is Beautiful' aesthetic.",
       spirituality: "Secular revolutionary humanism fused with spiritual resilience and ancestral Maroon resistance memory.",
       vision: "Self-determination, community control of housing and education, international anti-imperialism, and socialism."
@@ -124,6 +129,8 @@ const movementData = [
     trajectory: "Gandhian Satyagraha (India) → Fellowship of Reconciliation & CORE / Montgomery Bus Boycott (1955) → SCLC / SNCC Student Movement (Nashville/Atlanta) → Global Anti-Apartheid & Civil Rights Solidarity (South Africa, Northern Ireland).",
     howItTraversed: "African American intellectuals (Howard Thurman, Benjamin Mays, James Lawson) traveled to India to study Gandhian mass resistance, translating those tactical manuals into Black Christian church contexts across the US South, eventually inspiring anti-apartheid movements abroad.",
     whyItArrived: "Non-violent direct action mobilized mass moral witness, utilizing local Black church networks and HBCU student coalitions to disrupt economic revenue streams and expose southern state terror on global television.",
+    primaryQuote: "“Nonviolent direct action seeks to create such a crisis and foster such a tension that a community which has constantly refused to negotiate is forced to confront the issue.” — Dr. Martin Luther King Jr., 1963",
+    theoreticalSynthesis: "Non-violent direct action adapted as it traversed: Gandhian Satyagraha was reframed through Black Christian liberation theology into an active, coercive economic weapon capable of forcing legislative collapse.",
     cargo: {
       strategy: "Non-violent direct action workshops & manuals, economic boycotts, sit-ins, freedom rides, and jail-no-bail tactics.",
       culture: "Freedom Songs ('We Shall Overcome', 'Ain't Gonna Let Nobody Turn Me Around') and mass march choreography.",
@@ -142,6 +149,8 @@ const movementData = [
     trajectory: "Black Women's Club Movement & Abolitionist Roots (Sojourner Truth, Ida B. Wells) → Combahee River Collective (Boston, 1974) → Third World Women's Alliance → Global Transnational Black Feminism (Afro-Latin American & Caribbean Women's Network).",
     howItTraversed: "Evolved through autonomous study circles, radical feminist manifestos, independent publishing collectives ('Kitchen Table Press'), and international women's conferences across the global South.",
     whyItArrived: "Black women experienced simultaneous exclusion from both white feminist organizations (which ignored race and class) and male-dominated Black nationalist/civil rights groups (which ignored patriarchal domination).",
+    primaryQuote: "“If Black women were free, it would mean that everyone else would have to be free since our freedom would necessitate the destruction of all the systems of oppression.” — Combahee River Collective Statement, 1977",
+    theoreticalSynthesis: "The global trajectory of Black Feminism demonstrates how localized political exclusion birthed Intersectionality as a master analytical framework, uniting women of color across the Third World against multi-locking oppression.",
     cargo: {
       strategy: "Consciousness-raising circles, coalition building, independent publishing, and reproductive justice frameworks.",
       culture: "Articulation of 'Intersectionality' and 'Identity Politics', essays, anthologies ('This Bridge Called My Back').",
@@ -158,26 +167,28 @@ const movementData = [
     intermediate: locations.usTransnationalNet,
     to: locations.globalProtests,
     trajectory: "Ferguson, Missouri / Sanford, Florida (2012–2014) → Transnational US Network → Global Protests (London, Toronto, Paris, Sydney, Rio de Janeiro).",
+    howItTraversed: "Diffused instantaneously via social media algorithms, decentralized digital organizing, and real-time livestreaming, connecting local extrajudicial police killings to global carceral state violence.",
+    whyItArrived: "Unpunished police violence and systemic racism catalyzed a new generation of queer-, women-, and youth-led radical organizing that bypassed traditional hierarchical civil rights structures.",
+    primaryQuote: "“When Black people get free, everybody gets free. #BlackLivesMatter is an ideological and political intervention in a world where Black lives are systematically targeted for demise.” — Alicia Garza (2014)",
+    theoreticalSynthesis: "BLM's rapid digital translation proves that modern political ideas travel without traditional physical headquarters, uniting global struggles against carceral state violence while remaining rooted in local community demands.",
     cargo: {
       strategy: "Social media hashtags (#BlackLivesMatter), decentralized network structures, community bail funds, copwatch, die-ins, and the BREATHE Act.",
       culture: "Mural & street art, digital archiving, viral video documentation, and abolitionist performance art.",
       spirituality: "Ancestral reverence, healing justice, communal grief rituals, and trauma-informed care.",
       vision: "Prison abolition, systemic defunding of policing, reinvestment in Black communities, and global anti-carceral liberation."
     },
-    howItTraversed: "Diffused instantaneously via social media algorithms, decentralized digital organizing, and real-time livestreaming, connecting local extrajudicial police killings to global carceral state violence.",
-    whyItArrived: "Unpunished police violence and systemic racism catalyzed a new generation of queer-, women-, and youth-led radical organizing that bypassed traditional hierarchical civil rights structures.",
     citation: "Connects contemporary abolitionist horizons (Ruth Wilson Gilmore, Angela Davis) to historical freedom dreams and anti-carceral geographies."
   }
 ];
 
-// Custom component to render flowing animated directional arrows along polylines
+// Custom component to render thick, high-visibility animated directional arrows along polylines
 function AnimatedTrajectoryArrows({ startCoords, endCoords, color, isSelected }) {
   const [offset, setOffset] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setOffset((prev) => (prev + 1) % 20);
-    }, 50);
+      setOffset((prev) => (prev + 1) % 28);
+    }, 40);
     return () => clearInterval(interval);
   }, []);
 
@@ -186,10 +197,10 @@ function AnimatedTrajectoryArrows({ startCoords, endCoords, color, isSelected })
       positions={[startCoords, endCoords]}
       pathOptions={{
         color: color,
-        weight: isSelected ? 4 : 2,
-        dashArray: '10, 10',
+        weight: isSelected ? 6 : 3.5,
+        dashArray: '14, 14',
         dashOffset: `-${offset}`,
-        opacity: isSelected ? 1 : 0.65
+        opacity: isSelected ? 1 : 0.75
       }}
     />
   );
@@ -201,6 +212,7 @@ export default function App() {
   const [mapTheme, setMapTheme] = useState('dark');
   const [hudHeight, setHudHeight] = useState('medium'); // 'compact', 'medium', 'full'
 
+  // Free public tile URLs requiring no API keys
   const tileUrls = {
     light: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     dark: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
@@ -211,31 +223,31 @@ export default function App() {
   };
 
   const hudHeightClasses = {
-    compact: 'h-[22vh]',
-    medium: 'h-[42vh]',
-    full: 'h-[85vh]'
+    compact: 'h-[25vh]',
+    medium: 'h-[50vh]',
+    full: 'h-[92vh]'
   };
 
   return (
     <div className="w-screen h-screen flex flex-col bg-slate-950 font-sans text-white overflow-hidden relative">
       
       {/* Top Banner Navigation */}
-      <header className="absolute top-3 left-3 right-3 z-[1000] bg-slate-900/95 border border-slate-800 p-3 rounded-xl backdrop-blur-md flex flex-wrap justify-between items-center shadow-2xl">
-        <div className="flex items-center space-x-3">
-          <Compass className="w-6 h-6 text-emerald-400 animate-pulse" />
+      <header className="absolute top-3 left-3 right-3 z-[1000] bg-slate-900/95 border border-slate-700 p-4 rounded-xl backdrop-blur-md flex flex-wrap justify-between items-center shadow-2xl">
+        <div className="flex items-center space-x-3.5">
+          <Compass className="w-8 h-8 text-emerald-400 animate-pulse flex-shrink-0" />
           <div>
-            <h1 className="text-sm sm:text-base font-bold text-emerald-400">Black Studies Movement Map</h1>
-            <p className="text-xs text-slate-300">Guiding Question: <span className="text-slate-100 italic font-semibold">What happens to a political idea when it travels?</span></p>
+            <h1 className="text-lg sm:text-xl font-black text-emerald-400 tracking-wide">Black Studies Movement Map</h1>
+            <p className="text-sm sm:text-base text-slate-200">Guiding Question: <span className="text-amber-300 italic font-bold">What happens to a political idea when it travels?</span></p>
           </div>
         </div>
 
         {/* Top Navigation Buttons */}
-        <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+        <div className="flex items-center space-x-3 mt-2 sm:mt-0">
           <button
             onClick={() => setMapTheme(mapTheme === 'dark' ? 'light' : 'dark')}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center gap-1.5 transition-colors text-amber-300"
+            className="px-4 py-2.5 rounded-lg text-sm font-extrabold bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center gap-2 transition-colors text-amber-300 shadow-md"
           >
-            {mapTheme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+            {mapTheme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-400" />}
             {mapTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
           </button>
 
@@ -243,13 +255,13 @@ export default function App() {
             <button
               key={mov.id}
               onClick={() => setActiveMovement(mov)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${
+              className={`px-4 py-2.5 rounded-lg text-sm font-black transition-all flex items-center gap-2 border ${
                 activeMovement.id === mov.id
-                  ? 'bg-slate-800 border-emerald-500 text-white shadow-lg ring-1 ring-emerald-500'
-                  : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800'
+                  ? 'bg-slate-800 border-emerald-500 text-white shadow-lg ring-2 ring-emerald-500'
+                  : 'bg-slate-950/80 border-slate-700 text-slate-300 hover:bg-slate-800'
               }`}
             >
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: mov.color }}></span>
+              <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: mov.color }}></span>
               {mov.id}
             </button>
           ))}
@@ -259,7 +271,11 @@ export default function App() {
       {/* Interactive Leaflet Map Canvas */}
       <div className="w-full h-full z-0">
         <MapContainer center={[20, -20]} zoom={3} style={{ width: '100%', height: '100%' }} zoomControl={false}>
-          <TileLayer key={mapTheme} url={tileUrls[mapTheme]} attribution="&copy; OpenStreetMap contributors &copy; CARTO" />
+          <TileLayer 
+            key={mapTheme}
+            url={tileUrls[mapTheme]} 
+            attribution={mapTheme === 'dark' ? '&copy; Esri' : '&copy; OpenStreetMap contributors'} 
+          />
 
           {/* Render Trajectories & Minimalist Pins */}
           {movementData.map((mov) => {
@@ -288,14 +304,13 @@ export default function App() {
                 <Marker
                   position={mov.from.coords}
                   icon={createSimplePinIcon(mov.color, mov.from.name, isSelected)}
-                  evented={true}
-                  onClick={() => setActiveMovement(mov)}
+                  eventHandlers={{ click: () => setActiveMovement(mov) }}
                 >
                   <Popup className="custom-leaflet-popup">
-                    <div className="p-2 text-xs text-slate-900 font-sans">
-                      <strong className="text-emerald-700 font-bold text-sm">{mov.from.name} (Origin)</strong>
-                      <p className="mt-1 font-semibold">{mov.name}</p>
-                      <p className="mt-1 text-slate-600">Strategy: {mov.cargo.strategy}</p>
+                    <div className="p-3 text-sm text-slate-900 font-sans">
+                      <strong className="text-emerald-700 font-black text-base">{mov.from.name} (Origin)</strong>
+                      <p className="mt-1 font-extrabold text-slate-900">{mov.name}</p>
+                      <p className="mt-1.5 text-slate-800 leading-relaxed text-sm"><strong>Strategy:</strong> {mov.cargo.strategy}</p>
                     </div>
                   </Popup>
                 </Marker>
@@ -304,14 +319,13 @@ export default function App() {
                 <Marker
                   position={mov.intermediate.coords}
                   icon={createSimplePinIcon(mov.color, mov.intermediate.name, isSelected)}
-                  evented={true}
-                  onClick={() => setActiveMovement(mov)}
+                  eventHandlers={{ click: () => setActiveMovement(mov) }}
                 >
                   <Popup className="custom-leaflet-popup">
-                    <div className="p-2 text-xs text-slate-900 font-sans">
-                      <strong className="text-amber-700 font-bold text-sm">{mov.intermediate.name} (Node)</strong>
-                      <p className="mt-1 font-semibold">{mov.name}</p>
-                      <p className="mt-1 text-slate-600">Culture: {mov.cargo.culture}</p>
+                    <div className="p-3 text-sm text-slate-900 font-sans">
+                      <strong className="text-amber-700 font-black text-base">{mov.intermediate.name} (Node)</strong>
+                      <p className="mt-1 font-extrabold text-slate-900">{mov.name}</p>
+                      <p className="mt-1.5 text-slate-800 leading-relaxed text-sm"><strong>Culture:</strong> {mov.cargo.culture}</p>
                     </div>
                   </Popup>
                 </Marker>
@@ -320,14 +334,13 @@ export default function App() {
                 <Marker
                   position={mov.to.coords}
                   icon={createSimplePinIcon(mov.color, mov.to.name, isSelected)}
-                  evented={true}
-                  onClick={() => setActiveMovement(mov)}
+                  eventHandlers={{ click: () => setActiveMovement(mov) }}
                 >
                   <Popup className="custom-leaflet-popup">
-                    <div className="p-2 text-xs text-slate-900 font-sans">
-                      <strong className="text-sky-700 font-bold text-sm">{mov.to.name} (Destination)</strong>
-                      <p className="mt-1 font-semibold">{mov.name}</p>
-                      <p className="mt-1 text-slate-600">Vision: {mov.cargo.vision}</p>
+                    <div className="p-3 text-sm text-slate-900 font-sans">
+                      <strong className="text-sky-700 font-black text-base">{mov.to.name} (Destination)</strong>
+                      <p className="mt-1 font-extrabold text-slate-900">{mov.name}</p>
+                      <p className="mt-1.5 text-slate-800 leading-relaxed text-sm"><strong>Vision:</strong> {mov.cargo.vision}</p>
                     </div>
                   </Popup>
                 </Marker>
@@ -338,119 +351,169 @@ export default function App() {
       </div>
 
       {/* Resizable HUD Dashboard Card at Bottom */}
-      <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] w-[96%] max-w-6xl bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col transition-all duration-300 ease-in-out ${hudHeightClasses[hudHeight]}`}>
+      <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] w-[96%] max-w-7xl bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col transition-all duration-300 ease-in-out ${hudHeightClasses[hudHeight]}`}>
         
         {/* HUD Top Pull/Drag Handle */}
-        <div className="w-full bg-slate-950/80 hover:bg-slate-800/80 border-b border-slate-800 py-2 px-4 rounded-t-2xl flex items-center justify-between cursor-pointer select-none transition-colors"
+        <div className="w-full bg-slate-950/90 hover:bg-slate-800/90 border-b border-slate-700 py-3.5 px-6 rounded-t-2xl flex items-center justify-between cursor-pointer select-none transition-colors"
              onClick={() => setHudHeight(hudHeight === 'compact' ? 'medium' : hudHeight === 'medium' ? 'full' : 'compact')}>
-          <div className="flex items-center space-x-2">
-            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: activeMovement.color }}></span>
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-200">{activeMovement.name}</span>
+          <div className="flex items-center space-x-3.5">
+            <span className="w-4 h-4 rounded-full" style={{ backgroundColor: activeMovement.color }}></span>
+            <span className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-100">{activeMovement.name}</span>
           </div>
           
-          <div className="flex items-center space-x-1 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
-            <ChevronUp className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+          <div className="flex items-center space-x-2 bg-slate-800 px-4 py-1.5 rounded-full border border-slate-600 shadow-sm">
+            <ChevronUp className="w-5 h-5 text-emerald-400" />
+            <span className="text-xs sm:text-sm font-extrabold text-slate-200 uppercase tracking-wider">
               {hudHeight === 'compact' ? 'Pull Up for Details' : hudHeight === 'medium' ? 'Expand Full View' : 'Collapse HUD'}
             </span>
-            <ChevronDown className="w-3.5 h-3.5 text-emerald-400" />
+            <ChevronDown className="w-5 h-5 text-emerald-400" />
           </div>
 
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-2">
             <button 
               onClick={(e) => { e.stopPropagation(); setHudHeight('compact'); }}
-              className={`px-2 py-0.5 rounded text-[10px] font-bold ${hudHeight === 'compact' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+              className={`px-3 py-1 rounded text-xs sm:text-sm font-black ${hudHeight === 'compact' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}
             >Min</button>
             <button 
               onClick={(e) => { e.stopPropagation(); setHudHeight('medium'); }}
-              className={`px-2 py-0.5 rounded text-[10px] font-bold ${hudHeight === 'medium' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+              className={`px-3 py-1 rounded text-xs sm:text-sm font-black ${hudHeight === 'medium' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}
             >Mid</button>
             <button 
               onClick={(e) => { e.stopPropagation(); setHudHeight('full'); }}
-              className={`px-2 py-0.5 rounded text-[10px] font-bold ${hudHeight === 'full' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+              className={`px-3 py-1 rounded text-xs sm:text-sm font-black ${hudHeight === 'full' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}
             >Max</button>
           </div>
         </div>
 
         {/* HUD Content Area */}
-        <div className="flex-1 p-5 overflow-y-auto flex flex-col md:flex-row gap-5">
+        <div className="flex-1 p-6 sm:p-7 overflow-y-auto flex flex-col md:flex-row gap-6 sm:gap-8">
           
           {/* Layer Controls Panel (Left Side) */}
-          <div className="w-full md:w-64 bg-slate-950/90 border border-slate-800 p-4 rounded-xl flex flex-col justify-between flex-shrink-0">
+          <div className="w-full md:w-80 bg-slate-950/90 border border-slate-800 p-5 rounded-xl flex flex-col justify-between flex-shrink-0">
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-emerald-400" /> Trajectory Layers:
+              <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-emerald-400 mb-3 flex items-center gap-2.5">
+                <Layers className="w-5 h-5 text-emerald-400" /> Trajectory Layers:
               </h3>
-              <p className="text-[11px] text-slate-400 mb-3">Toggle movement lines on/off:</p>
-              <div className="space-y-1.5">
+              <p className="text-xs sm:text-sm text-slate-300 mb-4 font-semibold">Toggle movement lines on/off:</p>
+              <div className="space-y-2.5">
                 {movementData.map((m) => {
                   const isVisible = visibleMovements[m.id];
                   return (
                     <button
                       key={m.id}
                       onClick={() => toggleVisibility(m.id)}
-                      className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-all border ${
+                      className={`w-full px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-extrabold flex items-center justify-between transition-all border ${
                         isVisible
-                          ? 'bg-slate-900 border-emerald-600 text-white shadow-sm'
+                          ? 'bg-slate-900 border-emerald-500 text-white shadow-sm'
                           : 'bg-slate-950/50 border-slate-800 text-slate-500'
                       }`}
                     >
-                      <div className="flex items-center space-x-2 truncate pr-1">
-                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }}></span>
-                        <span className="truncate text-xs">{m.id}: {m.name.split(':')[1] || m.name}</span>
+                      <div className="flex items-center space-x-3 truncate pr-1">
+                        <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }}></span>
+                        <span className="truncate">{m.id}: {m.name.split(':')[1] || m.name}</span>
                       </div>
-                      {isVisible ? <Eye className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" /> : <EyeOff className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />}
+                      {isVisible ? <Eye className="w-4 h-4 text-emerald-400 flex-shrink-0" /> : <EyeOff className="w-4 h-4 text-slate-600 flex-shrink-0" />}
                     </button>
                   );
                 })}
               </div>
             </div>
-            <div className="mt-3 pt-2 border-t border-slate-800 text-[10px] text-slate-400 text-center">
-              Click pins on map to inspect cargo
+            <div className="mt-5 pt-3 border-t border-slate-800 text-xs sm:text-sm text-slate-400 font-bold text-center">
+              Click map pins to inspect cargo details
             </div>
           </div>
 
           {/* Extended Analytical Content Columns */}
-          <div className="flex-1 space-y-3">
-            <div className={`grid grid-cols-1 ${hudHeight === 'full' ? 'md:grid-cols-2' : 'md:grid-cols-2'} gap-4`}>
+          <div className="flex-1 space-y-6">
+            
+            {/* Primary Top Row: Historical Mechanics & Traveling Cargo */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Historical Mechanics */}
-              <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-2">
-                <h3 className="font-bold text-emerald-400 flex items-center gap-1.5 uppercase text-xs tracking-wider">
-                  <Sparkles className="w-4 h-4 text-emerald-400" /> Historical Traversal & Mechanics
+              <div className="bg-slate-950/80 p-5 sm:p-6 rounded-xl border border-slate-800 space-y-3.5">
+                <h3 className="font-black text-emerald-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider">
+                  <Sparkles className="w-5 h-5 text-emerald-400" /> Historical Traversal & Mechanics
                 </h3>
-                <p className={`${hudHeight === 'full' ? 'text-sm' : 'text-xs'} text-slate-200 leading-relaxed`}>
-                  <strong className="text-emerald-300">How It Traversed:</strong> {activeMovement.howItTraversed}
+                <p className="text-base sm:text-lg text-slate-100 leading-relaxed">
+                  <strong className="text-emerald-300 font-bold">How It Traversed:</strong> {activeMovement.howItTraversed}
                 </p>
-                <p className={`${hudHeight === 'full' ? 'text-sm' : 'text-xs'} text-slate-200 leading-relaxed pt-1`}>
-                  <strong className="text-emerald-300">Why It Arrived:</strong> {activeMovement.whyItArrived}
+                <p className="text-base sm:text-lg text-slate-100 leading-relaxed pt-1">
+                  <strong className="text-emerald-300 font-bold">Why It Arrived:</strong> {activeMovement.whyItArrived}
                 </p>
               </div>
 
               {/* Traveling Cargo */}
-              <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-2">
-                <h3 className="font-bold text-amber-400 flex items-center gap-1.5 uppercase text-xs tracking-wider">
-                  <Anchor className="w-4 h-4 text-amber-400" /> Traveling Cargo
+              <div className="bg-slate-950/80 p-5 sm:p-6 rounded-xl border border-slate-800 space-y-3.5">
+                <h3 className="font-black text-amber-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider">
+                  <Anchor className="w-5 h-5 text-amber-400" /> Traveling Cargo
                 </h3>
-                <p className={`${hudHeight === 'full' ? 'text-sm' : 'text-xs'} text-slate-200 leading-normal`}>
-                  <strong className="text-amber-300">Tactics & Strategy:</strong> {activeMovement.cargo.strategy}
+                <p className="text-base sm:text-lg text-slate-100 leading-relaxed">
+                  <strong className="text-amber-300 font-bold">Tactics & Strategy:</strong> {activeMovement.cargo.strategy}
                 </p>
-                <p className={`${hudHeight === 'full' ? 'text-sm' : 'text-xs'} text-slate-200 leading-normal`}>
-                  <strong className="text-amber-300">Culture & Aesthetics:</strong> {activeMovement.cargo.culture}
+                <p className="text-base sm:text-lg text-slate-100 leading-relaxed">
+                  <strong className="text-amber-300 font-bold">Culture & Aesthetics:</strong> {activeMovement.cargo.culture}
                 </p>
-                <p className={`${hudHeight === 'full' ? 'text-sm' : 'text-xs'} text-slate-200 leading-normal`}>
-                  <strong className="text-amber-300">Spirituality:</strong> {activeMovement.cargo.spirituality}
+                <p className="text-base sm:text-lg text-slate-100 leading-relaxed">
+                  <strong className="text-amber-300 font-bold">Spirituality:</strong> {activeMovement.cargo.spirituality}
                 </p>
               </div>
 
             </div>
 
+            {/* EXPANDED CONTENT (VISIBLE IN MID & FULL HUD): Primary Source Voices & Geographic Nodes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Primary Source Quote Box */}
+              <div className="bg-slate-950/80 p-5 sm:p-6 rounded-xl border border-slate-800 space-y-3.5">
+                <h3 className="font-black text-sky-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider">
+                  <Quote className="w-5 h-5 text-sky-400" /> Primary Source Voice
+                </h3>
+                <p className="text-base sm:text-lg text-slate-100 italic leading-relaxed border-l-4 border-sky-500 pl-4 py-2 bg-slate-900/60 rounded-r-lg font-medium">
+                  {activeMovement.primaryQuote}
+                </p>
+              </div>
+
+              {/* Spatial Trajectory Node Timeline */}
+              <div className="bg-slate-950/80 p-5 sm:p-6 rounded-xl border border-slate-800 space-y-3.5">
+                <h3 className="font-black text-indigo-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider">
+                  <Navigation className="w-5 h-5 text-indigo-400" /> Geographic Node Timeline
+                </h3>
+                <div className="grid grid-cols-3 gap-3 text-xs sm:text-sm pt-1">
+                  <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 shadow-inner">
+                    <span className="text-emerald-400 font-extrabold block mb-1 text-sm">1. Genesis:</span>
+                    <span className="text-slate-100 font-bold text-sm sm:text-base">{activeMovement.from.name}</span>
+                  </div>
+                  <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 shadow-inner">
+                    <span className="text-amber-400 font-extrabold block mb-1 text-sm">2. Vector:</span>
+                    <span className="text-slate-100 font-bold text-sm sm:text-base">{activeMovement.intermediate.name}</span>
+                  </div>
+                  <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 shadow-inner">
+                    <span className="text-sky-400 font-extrabold block mb-1 text-sm">3. Horizon:</span>
+                    <span className="text-slate-100 font-bold text-sm sm:text-base">{activeMovement.to.name}</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* EXPANDED CONTENT (VISIBLE IN FULL HUD): Core Analytical Synthesis */}
+            {hudHeight === 'full' && (
+              <div className="bg-slate-950/90 p-5 sm:p-6 rounded-xl border border-emerald-800/60 space-y-3 shadow-lg">
+                <h3 className="font-black text-emerald-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider">
+                  <Compass className="w-5 h-5 text-emerald-400" /> Theoretical Synthesis & Guiding Analysis
+                </h3>
+                <p className="text-base sm:text-lg text-slate-100 leading-relaxed italic font-medium">
+                  "{activeMovement.theoreticalSynthesis}"
+                </p>
+              </div>
+            )}
+
             {/* Course Citation Box */}
-            <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
-              <h3 className="font-bold text-purple-400 flex items-center gap-1.5 uppercase text-xs tracking-wider mb-1">
-                <BookOpen className="w-4 h-4 text-purple-400" /> Course Reading Integration
+            <div className="bg-slate-950/80 p-5 rounded-xl border border-slate-800">
+              <h3 className="font-black text-purple-400 flex items-center gap-2.5 uppercase text-sm sm:text-base tracking-wider mb-2">
+                <BookOpen className="w-5 h-5 text-purple-400" /> Course Reading Integration
               </h3>
-              <p className={`${hudHeight === 'full' ? 'text-sm' : 'text-xs'} text-slate-200 italic leading-relaxed`}>
+              <p className="text-base sm:text-lg text-slate-200 italic leading-relaxed font-medium">
                 "{activeMovement.citation}"
               </p>
             </div>
